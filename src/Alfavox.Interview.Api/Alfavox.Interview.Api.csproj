@@ -17,4 +17,8 @@
     <PackageReference Include="xunit" Version="2.6.6" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\infrastructure\Alfavox.Interview.Infrastructure\Alfavox.Interview.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

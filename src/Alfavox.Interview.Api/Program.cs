@@ -1,4 +1,7 @@
 using Alfavox.Interview.Api.Services;
+using Alfavox.Interview.Infrastructure;
+using Microsoft.Net.Http.Headers;
+using System.Net.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,9 +12,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddHttpClient();
 builder.Services.AddTransient<ISkywalkerService, SkywalkerService>();
-builder.Services.AddTransient<IFileService, FileService>();
-builder.Services.AddTransient<IHttpContextWrapper, HttpContextWrapper>();
-builder.Services.AddTransient<IHypermediaService, HypermediaService>();
+builder.Services.AddTransient<IHttpClientWrapper, HttpClientWrapper>();
 builder.Services.AddSingleton<ILoggingService, LoggingService>();
 
 builder.Services.AddCors(options =>

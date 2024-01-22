@@ -1,4 +1,6 @@
-﻿namespace Alfavox.Interview.Api.Services
+﻿using Microsoft.Extensions.Logging;
+namespace Alfavox.Interview.Infrastructure
+
 {
     public interface ILoggingService
     {

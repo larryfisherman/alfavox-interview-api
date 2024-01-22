@@ -1,6 +1,8 @@
 ﻿using Alfavox.Interview.Api.Models;
 using Alfavox.Interview.Api.Exceptions;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Alfavox.Interview.Infrastructure;
 
 namespace Alfavox.Interview.Api.Services
 {
@@ -14,17 +16,14 @@ namespace Alfavox.Interview.Api.Services
     {
         private static string ApiUrl { get; } = "https://swapi.dev/api/people/1/";
 
-        private readonly IHypermediaService _hypermediaService;
-        private readonly IHttpContextWrapper _httpContextWrapper;
-        private readonly IFileService _fileService;
         private readonly ILoggingService _loggingService;
+        private readonly IHttpClientWrapper _httpClientWrapper;
 
-        public SkywalkerService(IHttpContextWrapper httpContextWrapper, IFileService fileService, ILoggingService loggingService, IHypermediaService hypermerdiaService)
+
+        public SkywalkerService(ILoggingService loggingService, IHttpClientWrapper httpClientWrapper)
         {
-            _httpContextWrapper = httpContextWrapper;
-            _fileService = fileService;
             _loggingService = loggingService;
-            _hypermediaService = hypermerdiaService;
+            _httpClientWrapper = httpClientWrapper;
         }
 
         public async Task<SkywalkerDetailsResponse> GetSkywalkerData()
@@ -32,7 +31,7 @@ namespace Alfavox.Interview.Api.Services
 
             _loggingService.LogInformation($"Sending request to API: {ApiUrl}");
 
-            HttpResponseMessage response = await _httpContextWrapper.GetAsync(ApiUrl);
+            HttpResponseMessage response = await _httpClientWrapper.GetAsync(ApiUrl);
 
             if (response.IsSuccessStatusCode)
             {
@@ -42,9 +41,9 @@ namespace Alfavox.Interview.Api.Services
 
                 var lukeSkywalkerData = JsonConvert.DeserializeObject<SkywalkerDetailsResponse>(responseBody);
 
-                var filmNames = await _hypermediaService.GetHypermediaData(lukeSkywalkerData.Films, "title");
-                var vehicleNames = await _hypermediaService.GetHypermediaData(lukeSkywalkerData.Vehicles, "name");
-                var starshipNames = await _hypermediaService.GetHypermediaData(lukeSkywalkerData.Starships, "name");
+                var filmNames = await GetHypermediaData(lukeSkywalkerData.Films, "title");
+                var vehicleNames = await GetHypermediaData(lukeSkywalkerData.Vehicles, "name");
+                var starshipNames = await GetHypermediaData(lukeSkywalkerData.Starships, "name");
 
                 var result = new SkywalkerDetailsResponse
                 {
@@ -64,6 +63,7 @@ namespace Alfavox.Interview.Api.Services
 
                 throw new BadRequestException($"API request failed with status {response.StatusCode}");
             }
+
         }
 
         private void SaveResponseToFile(SkywalkerDetailsResponse response, string path)
@@ -74,9 +74,42 @@ namespace Alfavox.Interview.Api.Services
 
             string filePath = Path.Combine(path, "skywalkerDetails.txt");
 
-            _fileService.WriteAllText(filePath, jsonResult);
+            File.WriteAllText(filePath, jsonResult);
 
             _loggingService.LogInformation("Reponse saved in file");
+        }
+
+        private async Task<List<string>> GetHypermediaData(List<string> urls, string propertyName)
+        {
+            var result = new List<string>();
+
+                foreach (var url in urls)
+                {
+                    HttpResponseMessage response = await _httpClientWrapper.GetAsync(url);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        _loggingService.LogInformation("Hypermedia API request successful.");
+
+                        string responseBody = await response.Content.ReadAsStringAsync();
+
+                        var responseData = JsonConvert.DeserializeObject<JObject>(responseBody);
+
+                        if (responseData.TryGetValue(propertyName, out var propertyValue) && propertyValue != null)
+                        {
+                            result.Add(propertyValue.ToString());
+                        }
+                    }
+
+                    else
+                    {
+                        _loggingService.LogError($"Hypermedia API request failed with status {response.StatusCode}");
+
+                        throw new BadRequestException($"API request failed with status {response.StatusCode}");
+                    }
+                }
+
+            return result;
         }
     }
 }
